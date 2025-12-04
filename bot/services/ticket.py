@@ -8,9 +8,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.config import settings
 from bot.database.crud import UserCRUD, TicketCRUD, MessageCRUD
-from bot.database.models import Ticket, User, TicketStatus
+from bot.database.models import Ticket, User, TicketStatus, TicketSource
 
 logger = logging.getLogger(__name__)
+
+# Global reference to connection manager (will be set during app initialization)
+_connection_manager = None
+
+
+def set_connection_manager(manager):
+    """Set the global connection manager instance."""
+    global _connection_manager
+    _connection_manager = manager
+
+
+def get_connection_manager():
+    """Get the global connection manager instance."""
+    return _connection_manager
 
 
 class TicketService:
@@ -118,7 +132,7 @@ class TicketService:
     async def forward_operator_message_to_user(
         self, message: Message, ticket: Ticket, operator_username: Optional[str] = None
     ) -> bool:
-        """Forward an operator's message to the user."""
+        """Forward an operator's message to the user (Telegram)."""
         try:
             # Get user from ticket
             user = ticket.user
@@ -143,6 +157,66 @@ class TicketService:
             logger.error(f"Failed to forward message to user: {e}")
             return False
 
+    async def forward_operator_message_to_web_user(
+        self, message: Message, ticket: Ticket, operator_username: Optional[str] = None
+    ) -> bool:
+        """Forward an operator's message to web user via WebSocket."""
+        try:
+            # Get user from ticket
+            user = ticket.user
+
+            if not user.visitor_id:
+                logger.error(f"Web ticket {ticket.id} has no visitor_id")
+                return False
+
+            # Only support text messages for now
+            if not message.text:
+                logger.warning(f"Non-text message to web user not yet supported")
+                return False
+
+            # Send via WebSocket
+            connection_manager = get_connection_manager()
+            if not connection_manager:
+                logger.error("Connection manager not initialized")
+                return False
+
+            ws_message = {
+                "type": "message",
+                "text": message.text,
+                "is_from_user": False,
+                "operator_username": operator_username,
+                "created_at": datetime.utcnow().isoformat(),
+            }
+
+            success = await connection_manager.send_personal_message(
+                ws_message,
+                user.visitor_id
+            )
+
+            if not success:
+                logger.warning(f"Failed to send message via WebSocket to {user.visitor_id}")
+                # User might be offline - message is still saved in DB
+            else:
+                logger.info(f"Sent message to web visitor {user.visitor_id}")
+
+            # Record message in database
+            await MessageCRUD.create(
+                self.session,
+                ticket_id=ticket.id,
+                telegram_message_id=message.message_id,
+                is_from_user=False,
+                content_type="text",
+                text=message.text,
+                operator_username=operator_username,
+                is_delivered=success,
+            )
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to forward message to web user: {e}")
+            return False
+
     async def close_ticket(
         self, ticket_id: int, closed_by: Optional[str] = None
     ) -> Optional[Ticket]:
@@ -151,17 +225,30 @@ class TicketService:
         if not ticket:
             return None
 
-        # Notify user
+        user = ticket.user
+
+        # Notify user based on ticket source
         try:
-            user = ticket.user
-            close_message = (
-                f"Диалог по заявке {ticket.ticket_id_str} завершён.\n\n"
-                "Если у вас появится новый вопрос, просто напишите нам новое сообщение."
-            )
-            await self.bot.send_message(
-                chat_id=user.telegram_id,
-                text=close_message,
-            )
+            if ticket.source == TicketSource.WEB:
+                # Notify web user via WebSocket
+                if user.visitor_id:
+                    connection_manager = get_connection_manager()
+                    if connection_manager:
+                        await connection_manager.send_personal_message(
+                            {"type": "closed"},
+                            user.visitor_id
+                        )
+                        logger.info(f"Sent close notification to web visitor {user.visitor_id}")
+            else:
+                # Notify Telegram user
+                close_message = (
+                    f"Диалог по заявке {ticket.ticket_id_str} завершён.\n\n"
+                    "Если у вас появится новый вопрос, просто напишите нам новое сообщение."
+                )
+                await self.bot.send_message(
+                    chat_id=user.telegram_id,
+                    text=close_message,
+                )
         except Exception as e:
             logger.error(f"Failed to notify user about ticket closure: {e}")
 

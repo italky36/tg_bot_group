@@ -5,7 +5,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.database.models import User, Ticket, Message, TicketStatus
+from bot.database.models import User, Ticket, Message, TicketStatus, TicketSource
 
 
 class UserCRUD:
@@ -18,6 +18,16 @@ class UserCRUD:
         """Get user by Telegram ID."""
         result = await session.execute(
             select(User).where(User.telegram_id == telegram_id)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_by_visitor_id(
+        session: AsyncSession, visitor_id: str
+    ) -> Optional[User]:
+        """Get user by visitor ID."""
+        result = await session.execute(
+            select(User).where(User.visitor_id == visitor_id)
         )
         return result.scalar_one_or_none()
 
@@ -35,6 +45,24 @@ class UserCRUD:
             username=username,
             first_name=first_name,
             last_name=last_name,
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return user
+
+    @staticmethod
+    async def create_web_user(
+        session: AsyncSession,
+        visitor_id: str,
+        email: Optional[str] = None,
+        first_name: Optional[str] = None,
+    ) -> User:
+        """Create a new web user."""
+        user = User(
+            visitor_id=visitor_id,
+            email=email,
+            first_name=first_name,
         )
         session.add(user)
         await session.commit()
@@ -63,6 +91,29 @@ class UserCRUD:
             return user, False
         user = await UserCRUD.create(
             session, telegram_id, username, first_name, last_name
+        )
+        return user, True
+
+    @staticmethod
+    async def get_or_create_web_user(
+        session: AsyncSession,
+        visitor_id: str,
+        email: Optional[str] = None,
+        first_name: Optional[str] = None,
+    ) -> tuple[User, bool]:
+        """Get existing web user or create a new one. Returns (user, created)."""
+        user = await UserCRUD.get_by_visitor_id(session, visitor_id)
+        if user:
+            # Update user info if changed
+            if email and user.email != email:
+                user.email = email
+            if first_name and user.first_name != first_name:
+                user.first_name = first_name
+            if email or first_name:
+                await session.commit()
+            return user, False
+        user = await UserCRUD.create_web_user(
+            session, visitor_id, email, first_name
         )
         return user, True
 
@@ -120,12 +171,20 @@ class TicketCRUD:
         session: AsyncSession,
         user_id: int,
         topic_id: Optional[int] = None,
+        topic_name: Optional[str] = None,
+        source: TicketSource = TicketSource.TELEGRAM,
+        page_url: Optional[str] = None,
+        user_agent: Optional[str] = None,
     ) -> Ticket:
         """Create a new ticket."""
         ticket = Ticket(
             user_id=user_id,
             topic_id=topic_id,
+            topic_name=topic_name,
+            source=source,
             status=TicketStatus.OPEN,
+            page_url=page_url,
+            user_agent=user_agent,
         )
         session.add(ticket)
         await session.commit()
@@ -141,6 +200,18 @@ class TicketCRUD:
             update(Ticket).where(Ticket.id == ticket_id).values(topic_id=topic_id)
         )
         await session.commit()
+
+    @staticmethod
+    async def update_topic_name(
+        session: AsyncSession, ticket_id: int, topic_name: str
+    ) -> Optional[Ticket]:
+        """Update ticket's topic name."""
+        ticket = await TicketCRUD.get_by_id(session, ticket_id)
+        if ticket:
+            ticket.topic_name = topic_name
+            await session.commit()
+            await session.refresh(ticket)
+        return ticket
 
     @staticmethod
     async def close(
@@ -200,11 +271,13 @@ class MessageCRUD:
     async def create(
         session: AsyncSession,
         ticket_id: int,
-        telegram_message_id: int,
+        telegram_message_id: Optional[int] = None,
         is_from_user: bool = True,
         content_type: str = "text",
         text: Optional[str] = None,
         operator_username: Optional[str] = None,
+        is_delivered: bool = False,
+        is_read: bool = False,
     ) -> Message:
         """Create a new message record."""
         message = Message(
@@ -214,10 +287,43 @@ class MessageCRUD:
             content_type=content_type,
             text=text,
             operator_username=operator_username,
+            is_delivered=is_delivered,
+            is_read=is_read,
         )
         session.add(message)
         await session.commit()
         await session.refresh(message)
+        return message
+
+    @staticmethod
+    async def mark_as_delivered(
+        session: AsyncSession, message_id: int
+    ) -> Optional[Message]:
+        """Mark message as delivered."""
+        result = await session.execute(
+            select(Message).where(Message.id == message_id)
+        )
+        message = result.scalar_one_or_none()
+        if message:
+            message.is_delivered = True
+            await session.commit()
+            await session.refresh(message)
+        return message
+
+    @staticmethod
+    async def mark_as_read(
+        session: AsyncSession, message_id: int
+    ) -> Optional[Message]:
+        """Mark message as read."""
+        result = await session.execute(
+            select(Message).where(Message.id == message_id)
+        )
+        message = result.scalar_one_or_none()
+        if message:
+            message.is_read = True
+            message.is_delivered = True
+            await session.commit()
+            await session.refresh(message)
         return message
 
     @staticmethod

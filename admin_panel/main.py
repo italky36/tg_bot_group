@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from admin_panel.config import admin_settings
-from admin_panel.routes import dashboard, tickets, auth
+from admin_panel.routes import dashboard, tickets, auth, widget
 
 # Get base directory
 BASE_DIR = Path(__file__).resolve().parent
@@ -31,6 +31,16 @@ app.mount(
     name="static",
 )
 
+# Mount widget files
+import os
+widget_dir = BASE_DIR.parent / "widget"
+if os.path.exists(widget_dir):
+    app.mount(
+        "/widget",
+        StaticFiles(directory=widget_dir),
+        name="widget",
+    )
+
 # Setup templates
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
@@ -38,3 +48,4 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(tickets.router)
+app.include_router(widget.router)
