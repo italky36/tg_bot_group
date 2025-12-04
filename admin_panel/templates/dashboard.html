@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - SupportHub Admin{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 20px;">Dashboard</h2>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-label">Total Tickets</div>
+    </div>
+    <div class="stat-card open">
+        <div class="stat-value">{{ stats.open }}</div>
+        <div class="stat-label">Open</div>
+    </div>
+    <div class="stat-card closed">
+        <div class="stat-value">{{ stats.closed }}</div>
+        <div class="stat-label">Closed</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.today }}</div>
+        <div class="stat-label">Today</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.week }}</div>
+        <div class="stat-label">This Week</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="font-size: 1.5rem;">{{ stats.avg_response_time }}</div>
+        <div class="stat-label">Avg Response Time</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Recent Tickets</div>
+
+    {% if recent_tickets %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in recent_tickets %}
+                <tr>
+                    <td><strong>#{{ "%04d"|format(ticket.id) }}</strong></td>
+                    <td>{{ ticket.user.display_name }}</td>
+                    <td>
+                        {% if ticket.status.value == 'open' %}
+                        <span class="badge badge-open">Open</span>
+                        {% else %}
+                        <span class="badge badge-closed">Closed</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ ticket.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                    <td>
+                        <a href="/tickets/{{ ticket.id }}" class="btn btn-secondary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div style="margin-top: 15px; text-align: center;">
+        <a href="/tickets" class="btn btn-primary">View All Tickets</a>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No tickets yet</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

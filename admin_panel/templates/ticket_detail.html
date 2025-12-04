@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Ticket #{{ "%04d"|format(ticket.id) }} - SupportHub Admin{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <a href="/tickets" class="btn btn-secondary">Back to Tickets</a>
+</div>
+
+<div class="card">
+    <div class="ticket-header">
+        <div>
+            <h2 class="ticket-title">
+                Ticket #{{ "%04d"|format(ticket.id) }}
+                {% if ticket.status.value == 'open' %}
+                <span class="badge badge-open">Open</span>
+                {% else %}
+                <span class="badge badge-closed">Closed</span>
+                {% endif %}
+            </h2>
+        </div>
+        <div class="ticket-meta">
+            <p><strong>Created:</strong> {{ ticket.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
+            {% if ticket.closed_at %}
+            <p><strong>Closed:</strong> {{ ticket.closed_at.strftime('%d.%m.%Y %H:%M') }}</p>
+            {% if ticket.closed_by %}
+            <p><strong>Closed by:</strong> {{ ticket.closed_by }}</p>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    {% if user %}
+    <div class="user-info">
+        <h3>User Information</h3>
+        <p><strong>Name:</strong> {{ user.display_name }}</p>
+        <p><strong>Telegram ID:</strong> <code>{{ user.telegram_id }}</code></p>
+        {% if user.username %}
+        <p><strong>Username:</strong> @{{ user.username }}</p>
+        {% endif %}
+        <p><strong>Registered:</strong> {{ user.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">Message History</div>
+
+    {% if messages %}
+    <div class="messages-list">
+        {% for message in messages %}
+        <div class="message {% if message.is_from_user %}message-user{% else %}message-operator{% endif %}">
+            <div class="message-header">
+                {% if message.is_from_user %}
+                {{ user.display_name if user else 'User' }}
+                {% else %}
+                Support {% if message.operator_username %}({{ message.operator_username }}){% endif %}
+                {% endif %}
+            </div>
+            <div class="message-content">
+                {% if message.text %}
+                {{ message.text }}
+                {% else %}
+                <em>[{{ message.content_type }}]</em>
+                {% endif %}
+            </div>
+            <div class="message-time">
+                {{ message.created_at.strftime('%d.%m.%Y %H:%M') }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No messages in this ticket</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

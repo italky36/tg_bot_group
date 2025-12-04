@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Tickets - SupportHub Admin{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 20px;">Tickets</h2>
+
+<div class="filters">
+    <a href="/tickets" class="filter-btn {% if not current_status %}active{% endif %}">All ({{ total }})</a>
+    <a href="/tickets?status=open" class="filter-btn {% if current_status == 'open' %}active{% endif %}">Open</a>
+    <a href="/tickets?status=closed" class="filter-btn {% if current_status == 'closed' %}active{% endif %}">Closed</a>
+</div>
+
+<div class="card">
+    {% if tickets %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Updated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in tickets %}
+                <tr>
+                    <td><strong>#{{ "%04d"|format(ticket.id) }}</strong></td>
+                    <td>
+                        {{ ticket.user.display_name }}<br>
+                        <small style="color: var(--gray-500);">ID: {{ ticket.user.telegram_id }}</small>
+                    </td>
+                    <td>
+                        {% if ticket.status.value == 'open' %}
+                        <span class="badge badge-open">Open</span>
+                        {% else %}
+                        <span class="badge badge-closed">Closed</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ ticket.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                    <td>{{ ticket.updated_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                    <td>
+                        <a href="/tickets/{{ ticket.id }}" class="btn btn-secondary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="/tickets?page={{ page - 1 }}{% if current_status %}&status={{ current_status }}{% endif %}">Prev</a>
+        {% endif %}
+
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == page %}
+            <span class="current">{{ p }}</span>
+            {% elif p <= 3 or p > total_pages - 3 or (p >= page - 1 and p <= page + 1) %}
+            <a href="/tickets?page={{ p }}{% if current_status %}&status={{ current_status }}{% endif %}">{{ p }}</a>
+            {% elif p == 4 or p == total_pages - 3 %}
+            <span>...</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <a href="/tickets?page={{ page + 1 }}{% if current_status %}&status={{ current_status }}{% endif %}">Next</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <p>No tickets found</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
