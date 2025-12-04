@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional, List
 
 from sqlalchemy import select, update
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.database.models import User, Ticket, Message, TicketStatus
@@ -73,7 +74,9 @@ class TicketCRUD:
     async def get_by_id(session: AsyncSession, ticket_id: int) -> Optional[Ticket]:
         """Get ticket by ID."""
         result = await session.execute(
-            select(Ticket).where(Ticket.id == ticket_id)
+            select(Ticket)
+            .options(selectinload(Ticket.user))
+            .where(Ticket.id == ticket_id)
         )
         return result.scalar_one_or_none()
 
@@ -83,7 +86,9 @@ class TicketCRUD:
     ) -> Optional[Ticket]:
         """Get ticket by topic ID."""
         result = await session.execute(
-            select(Ticket).where(Ticket.topic_id == topic_id)
+            select(Ticket)
+            .options(selectinload(Ticket.user))
+            .where(Ticket.topic_id == topic_id)
         )
         return result.scalar_one_or_none()
 

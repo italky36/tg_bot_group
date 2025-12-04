@@ -109,8 +109,8 @@ async def handle_user_message(message: Message):
         # Get or create ticket
         ticket, is_new_ticket = await service.get_or_create_ticket(user)
 
-        # Create topic if this is a new ticket
-        if is_new_ticket:
+        # Create topic if this is a new ticket or existing ticket lost topic_id
+        if is_new_ticket or not ticket.topic_id:
             topic_id = await service.create_topic_for_ticket(ticket, user)
             if not topic_id:
                 await message.answer(
