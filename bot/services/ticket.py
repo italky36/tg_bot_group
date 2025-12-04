@@ -68,7 +68,12 @@ class TicketService:
             logger.info(f"Created topic {topic_id} for ticket {ticket.id}")
             return topic_id
         except Exception as e:
-            logger.error(f"Failed to create topic: {e}")
+            logger.error(
+                f"Failed to create topic for ticket {ticket.id}: {e}. "
+                f"Check that: 1) Group {settings.support_group_id} exists, "
+                f"2) Bot is admin with 'Manage Topics' permission, "
+                f"3) Group has Topics enabled"
+            )
             return None
 
     async def forward_user_message_to_group(
