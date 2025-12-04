@@ -15,10 +15,19 @@ class Settings(BaseSettings):
         default="change_me_in_production",
         description="Secret key for admin panel"
     )
+    admin_username: str = Field(
+        default="admin",
+        description="Admin panel username"
+    )
+    admin_password: str = Field(
+        default="admin",
+        description="Admin panel password"
+    )
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 settings = Settings()
