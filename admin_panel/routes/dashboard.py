@@ -5,6 +5,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 
 from admin_panel.auth import require_auth
 from admin_panel.database import get_session, Ticket, Message, TicketStatus
@@ -51,6 +52,7 @@ async def dashboard(request: Request):
         # Recent tickets (last 5)
         recent_result = await session.execute(
             select(Ticket)
+            .options(selectinload(Ticket.user))
             .order_by(Ticket.created_at.desc())
             .limit(5)
         )

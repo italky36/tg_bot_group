@@ -46,34 +46,134 @@
 <div class="card">
     <div class="card-header">Message History</div>
 
-    {% if messages %}
-    <div class="messages-list">
-        {% for message in messages %}
-        <div class="message {% if message.is_from_user %}message-user{% else %}message-operator{% endif %}">
-            <div class="message-header">
-                {% if message.is_from_user %}
-                {{ user.display_name if user else 'User' }}
-                {% else %}
-                Support {% if message.operator_username %}({{ message.operator_username }}){% endif %}
-                {% endif %}
+    <div class="messages-list" id="messages-list">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="message {% if message.is_from_user %}message-user{% else %}message-operator{% endif %}">
+                <div class="message-header">
+                    {% if message.is_from_user %}
+                    {{ user.display_name if user else 'User' }}
+                    {% else %}
+                    Support {% if message.operator_username %}({{ message.operator_username }}){% endif %}
+                    {% endif %}
+                </div>
+                <div class="message-content">
+                    {% if message.text %}
+                    {{ message.text }}
+                    {% else %}
+                    <em>[{{ message.content_type }}]</em>
+                    {% endif %}
+                </div>
+                <div class="message-time">
+                    {{ message.created_at.strftime('%d.%m.%Y %H:%M') }}
+                </div>
             </div>
-            <div class="message-content">
-                {% if message.text %}
-                {{ message.text }}
-                {% else %}
-                <em>[{{ message.content_type }}]</em>
-                {% endif %}
-            </div>
-            <div class="message-time">
-                {{ message.created_at.strftime('%d.%m.%Y %H:%M') }}
-            </div>
+            {% endfor %}
+        {% else %}
+        <div class="empty-state">
+            <p>No messages in this ticket</p>
         </div>
-        {% endfor %}
+        {% endif %}
     </div>
-    {% else %}
-    <div class="empty-state">
-        <p>No messages in this ticket</p>
-    </div>
-    {% endif %}
 </div>
+
+<div class="card">
+    <div class="card-header">Reply</div>
+    <form id="reply-form" class="reply-form">
+        <textarea id="reply-input" rows="4" placeholder="Type your reply..." required style="width: 100%; padding: 10px; font-size: 1rem; min-height: 100px; resize: vertical;"></textarea>
+        <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+            <button type="submit" class="btn btn-primary">Send</button>
+            <span id="reply-status" style="font-size: 0.9rem; color: var(--gray-600);"></span>
+        </div>
+    </form>
+</div>
+
+<script>
+    (function() {
+        const ticketId = {{ ticket.id }};
+        const visitorId = {{ (user.visitor_id if user else None) | tojson }};
+        const userDisplayName = {{ (user.display_name if user else "User") | tojson }};
+        const messagesList = document.getElementById('messages-list');
+        const replyForm = document.getElementById('reply-form');
+        const replyInput = document.getElementById('reply-input');
+        const replyStatus = document.getElementById('reply-status');
+
+        function formatTime(iso) {
+            const date = new Date(iso);
+            return date.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderMessages(messages) {
+            messagesList.innerHTML = '';
+            if (!messages || messages.length === 0) {
+                messagesList.innerHTML = '<div class="empty-state"><p>No messages in this ticket</p></div>';
+                return;
+            }
+
+            messages.forEach(msg => {
+                const wrapper = document.createElement('div');
+                wrapper.className = `message ${msg.is_from_user ? 'message-user' : 'message-operator'}`;
+
+                const header = document.createElement('div');
+                header.className = 'message-header';
+                header.textContent = msg.is_from_user ? (userDisplayName || 'User') : `Support${msg.operator_username ? ' (' + msg.operator_username + ')' : ''}`;
+
+                const content = document.createElement('div');
+                content.className = 'message-content';
+                content.textContent = msg.text || `[${msg.content_type}]`;
+
+                const time = document.createElement('div');
+                time.className = 'message-time';
+                time.textContent = formatTime(msg.created_at);
+
+                wrapper.appendChild(header);
+                wrapper.appendChild(content);
+                wrapper.appendChild(time);
+                messagesList.appendChild(wrapper);
+            });
+        }
+
+        async function loadMessages() {
+            try {
+                const res = await fetch(`/tickets/${ticketId}/messages`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!res.ok) return;
+                const data = await res.json();
+                renderMessages(data.messages || []);
+            } catch (e) {
+                console.error('Failed to load messages', e);
+            }
+        }
+
+        replyForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = replyInput.value.trim();
+            if (!text) return;
+            replyStatus.textContent = 'Sending...';
+            try {
+                const res = await fetch(`/tickets/${ticketId}/reply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text }),
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'success') {
+                    replyInput.value = '';
+                    replyStatus.textContent = 'Sent';
+                    loadMessages();
+                } else {
+                    replyStatus.textContent = data.error || 'Failed to send';
+                }
+            } catch (err) {
+                console.error(err);
+                replyStatus.textContent = 'Failed to send';
+            } finally {
+                setTimeout(() => replyStatus.textContent = '', 2000);
+            }
+        });
+
+        // Auto-refresh messages every 4 seconds
+        loadMessages();
+        setInterval(loadMessages, 4000);
+    })();
+</script>
 {% endblock %}

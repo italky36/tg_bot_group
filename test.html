@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест виджета</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        h1 { color: #333; }
+        .info {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Тест чат-виджета</h1>
+    
+    <div class="info">
+        <h3>Инструкция:</h3>
+        <ol>
+            <li>Проверьте, что бот и админ-панель запущены</li>
+            <li>Нажмите на круглую кнопку в правом нижнем углу</li>
+            <li>Напишите сообщение</li>
+            <li>Проверьте Telegram-группу - должна создаться новая тема</li>
+            <li>Ответьте в теме - сообщение появится в виджете</li>
+        </ol>
+    </div>
+
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit...</p>
+
+    <!-- Виджет чата -->
+    <script>
+        window.SUPPORTHUB_WS_URL = 'ws://127.0.0.1:8000/ws/widget';
+        window.SUPPORTHUB_COLOR = '#007bff';
+        window.SUPPORTHUB_POSITION = 'bottom-right';
+    </script>
+    <script src="http://127.0.0.1:8000/widget/chat-widget.js"></script>
+</body>
+</html>

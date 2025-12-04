@@ -6,6 +6,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from admin_panel.config import admin_settings
+from admin_panel.database import ensure_schema
 from admin_panel.routes import dashboard, tickets, auth, widget
 
 # Get base directory
@@ -43,6 +44,11 @@ if os.path.exists(widget_dir):
 
 # Setup templates
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
+
+# Ensure database schema is up to date on startup
+@app.on_event("startup")
+async def startup_event():
+    await ensure_schema()
 
 # Include routers
 app.include_router(auth.router)

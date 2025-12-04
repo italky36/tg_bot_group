@@ -85,10 +85,20 @@ class Ticket(Base):
     topic_id: Mapped[int] = mapped_column(BigInteger, nullable=True, index=True)
     topic_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     source: Mapped[TicketSource] = mapped_column(
-        SQLEnum(TicketSource), default=TicketSource.TELEGRAM
+        SQLEnum(
+            TicketSource,
+            values_callable=lambda enum: [e.value for e in enum],
+            name="ticketsource",
+        ),
+        default=TicketSource.TELEGRAM,
     )
     status: Mapped[TicketStatus] = mapped_column(
-        SQLEnum(TicketStatus), default=TicketStatus.OPEN
+        SQLEnum(
+            TicketStatus,
+            values_callable=lambda enum: [e.value for e in enum],
+            name="ticketstatus",
+        ),
+        default=TicketStatus.OPEN,
     )
     closed_by: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     page_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

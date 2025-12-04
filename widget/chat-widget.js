@@ -444,8 +444,12 @@
                     }
                     break;
 
+                case 'read_receipt':
+                    this.markUserMessagesRead();
+                    break;
+
                 case 'message_sent':
-                    // Message confirmation
+                    // Message confirmation (could map message IDs here if needed)
                     break;
 
                 case 'typing':
@@ -473,6 +477,7 @@
         loadHistory(messages) {
             messages.forEach(msg => {
                 this.addMessage({
+                    id: msg.id,
                     text: msg.text,
                     is_from_user: msg.is_from_user,
                     created_at: msg.created_at,
@@ -481,6 +486,14 @@
                 }, false);
             });
             this.scrollToBottom();
+        }
+
+        markUserMessagesRead() {
+            const messagesContainer = document.getElementById('supporthub-messages');
+            const statuses = messagesContainer.querySelectorAll('.supporthub-message.user .supporthub-message-status');
+            statuses.forEach(el => {
+                el.textContent = '✓✓';
+            });
         }
 
         sendMessage() {
@@ -515,6 +528,9 @@
             const messagesContainer = document.getElementById('supporthub-messages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `supporthub-message ${data.is_from_user ? 'user' : 'operator'}`;
+            if (data.id) {
+                messageDiv.dataset.messageId = data.id;
+            }
 
             const bubble = document.createElement('div');
             bubble.className = 'supporthub-message-bubble';
@@ -532,7 +548,7 @@
             if (data.is_from_user) {
                 const status = document.createElement('span');
                 status.className = 'supporthub-message-status';
-                status.textContent = data.is_read ? '✓✓' : data.is_delivered ? '✓' : '○';
+                status.textContent = data.is_read ? '✓✓' : data.is_delivered ? '✓' : '…';
                 meta.appendChild(status);
             }
 

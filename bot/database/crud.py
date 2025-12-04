@@ -327,6 +327,23 @@ class MessageCRUD:
         return message
 
     @staticmethod
+    async def mark_ticket_messages_read(
+        session: AsyncSession, ticket_id: int
+    ) -> None:
+        """
+        Mark all user messages in a ticket as read/delivered.
+
+        Intended for when an operator views a ticket.
+        """
+        await session.execute(
+            update(Message)
+            .where(Message.ticket_id == ticket_id)
+            .where(Message.is_from_user == True)
+            .values(is_read=True, is_delivered=True)
+        )
+        await session.commit()
+
+    @staticmethod
     async def get_by_ticket(
         session: AsyncSession, ticket_id: int
     ) -> List[Message]:
