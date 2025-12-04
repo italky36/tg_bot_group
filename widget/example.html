@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пример интеграции SupportHub виджета</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+        }
+        .code-block {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        code {
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Пример интеграции SupportHub Chat Widget</h1>
+
+    <p>Это демонстрационная страница с интегрированным виджетом чата поддержки.</p>
+
+    <h2>Инструкция по установке</h2>
+
+    <h3>1. Базовая установка</h3>
+    <p>Добавьте следующий код перед закрывающим тегом <code>&lt;/body&gt;</code>:</p>
+    <div class="code-block">
+        <code>
+&lt;script&gt;<br>
+&nbsp;&nbsp;// Настройки виджета<br>
+&nbsp;&nbsp;window.SUPPORTHUB_WS_URL = 'ws://your-server.com/ws/widget';<br>
+&nbsp;&nbsp;window.SUPPORTHUB_COLOR = '#007bff';<br>
+&nbsp;&nbsp;window.SUPPORTHUB_POSITION = 'bottom-right';<br>
+&lt;/script&gt;<br>
+&lt;script src="https://your-server.com/widget/chat-widget.js"&gt;&lt;/script&gt;
+        </code>
+    </div>
+
+    <h3>2. Параметры настройки</h3>
+    <ul>
+        <li><strong>SUPPORTHUB_WS_URL</strong> - URL WebSocket сервера (обязательный)</li>
+        <li><strong>SUPPORTHUB_COLOR</strong> - Основной цвет виджета (по умолчанию: #007bff)</li>
+        <li><strong>SUPPORTHUB_POSITION</strong> - Позиция виджета: 'bottom-right' или 'bottom-left' (по умолчанию: bottom-right)</li>
+        <li><strong>SUPPORTHUB_GREETING</strong> - Приветственное сообщение (по умолчанию: "Здравствуйте! Чем можем помочь?")</li>
+    </ul>
+
+    <h3>3. Для Tilda</h3>
+    <p>В настройках сайта:</p>
+    <ol>
+        <li>Перейдите в "Настройки сайта" → "Еще" → "HTML-код для вставки внутри head"</li>
+        <li>Вставьте код настроек (window.SUPPORTHUB_*)</li>
+        <li>Перейдите в "HTML-код для вставки перед /body"</li>
+        <li>Вставьте код загрузки скрипта</li>
+    </ol>
+
+    <h2>Возможности</h2>
+    <ul>
+        <li>Автоматическое сохранение истории чата</li>
+        <li>Уникальная идентификация посетителя</li>
+        <li>Индикаторы доставки и прочтения</li>
+        <li>Уведомления о новых сообщениях</li>
+        <li>Адаптивный дизайн</li>
+        <li>Автоматическое переподключение при разрыве соединения</li>
+    </ul>
+
+    <!-- Интеграция виджета -->
+    <script>
+        // Настройки виджета
+        window.SUPPORTHUB_WS_URL = 'ws://localhost:8000/ws/widget';
+        window.SUPPORTHUB_COLOR = '#007bff';
+        window.SUPPORTHUB_POSITION = 'bottom-right';
+    </script>
+    <script src="chat-widget.js"></script>
+</body>
+</html>

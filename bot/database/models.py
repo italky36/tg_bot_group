@@ -25,15 +25,23 @@ class TicketStatus(str, Enum):
     CLOSED = "closed"
 
 
+class TicketSource(str, Enum):
+    """Ticket source enumeration."""
+    TELEGRAM = "telegram"
+    WEB = "web"
+
+
 class User(Base):
     """User model - represents Telegram users who contact support."""
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True)
+    telegram_id: Mapped[Optional[int]] = mapped_column(BigInteger, unique=True, index=True, nullable=True)
+    visitor_id: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True, nullable=True)
     username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     first_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     last_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now()
     )
@@ -56,7 +64,13 @@ class User(Base):
             if self.last_name:
                 name += f" {self.last_name}"
             return name
-        return f"User {self.telegram_id}"
+        if self.email:
+            return self.email
+        if self.telegram_id:
+            return f"User {self.telegram_id}"
+        if self.visitor_id:
+            return f"Visitor {self.visitor_id[:8]}"
+        return "Unknown User"
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, telegram_id={self.telegram_id}, username={self.username})>"
@@ -69,10 +83,16 @@ class Ticket(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     topic_id: Mapped[int] = mapped_column(BigInteger, nullable=True, index=True)
+    topic_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    source: Mapped[TicketSource] = mapped_column(
+        SQLEnum(TicketSource), default=TicketSource.TELEGRAM
+    )
     status: Mapped[TicketStatus] = mapped_column(
         SQLEnum(TicketStatus), default=TicketStatus.OPEN
     )
     closed_by: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    page_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    user_agent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now()
     )
@@ -102,11 +122,13 @@ class Message(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"), index=True)
-    telegram_message_id: Mapped[int] = mapped_column(BigInteger)
+    telegram_message_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     is_from_user: Mapped[bool] = mapped_column(default=True)
     content_type: Mapped[str] = mapped_column(String(50), default="text")
     text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     operator_username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    is_delivered: Mapped[bool] = mapped_column(default=False)
+    is_read: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now()
     )

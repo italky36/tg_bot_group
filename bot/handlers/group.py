@@ -7,7 +7,7 @@ from aiogram.filters import Command
 from bot.config import settings
 from bot.database.session import async_session
 from bot.database.crud import TicketCRUD
-from bot.database.models import TicketStatus
+from bot.database.models import TicketStatus, TicketSource
 from bot.services.ticket import TicketService
 from bot.utils.helpers import is_supported_content_type, format_ticket_info
 
@@ -150,6 +150,58 @@ async def cmd_info(message: Message):
         await message.answer(info_text, parse_mode="HTML")
 
 
+@router.message(Command("rename"))
+async def cmd_rename(message: Message):
+    """Rename a ticket topic. Usage: /rename New Topic Name"""
+    args = message.text.split(maxsplit=1)[1:] if message.text else []
+
+    if not args:
+        await message.answer(
+            "Использование: /rename Новое название темы\n"
+            "Команда должна быть выполнена в теме заявки."
+        )
+        return
+
+    new_name = args[0].strip()
+    if not new_name:
+        await message.answer("Название темы не может быть пустым.")
+        return
+
+    if not message.message_thread_id:
+        await message.answer("Команда должна быть выполнена в теме заявки.")
+        return
+
+    async with async_session() as session:
+        # Find ticket by topic ID
+        ticket = await TicketCRUD.get_by_topic_id(session, message.message_thread_id)
+
+        if not ticket:
+            await message.answer("Заявка не найдена.")
+            return
+
+        # Truncate if too long (Telegram limit is 128 chars)
+        if len(new_name) > 120:
+            new_name = new_name[:120] + "..."
+
+        try:
+            # Rename topic
+            await message.bot.edit_forum_topic(
+                chat_id=settings.support_group_id,
+                message_thread_id=message.message_thread_id,
+                name=new_name,
+            )
+
+            # Update ticket topic name in database
+            await TicketCRUD.update_topic_name(session, ticket.id, new_name)
+
+            await message.answer(f"Тема переименована в: {new_name}")
+            logger.info(f"Topic {message.message_thread_id} renamed to '{new_name}'")
+
+        except Exception as e:
+            logger.error(f"Failed to rename topic: {e}")
+            await message.answer("Не удалось переименовать тему.")
+
+
 @router.message(Command("stats"))
 async def cmd_stats(message: Message):
     """Show ticket statistics."""
@@ -208,9 +260,17 @@ async def handle_operator_message(message: Message):
             else message.from_user.first_name
         )
 
-        success = await service.forward_operator_message_to_user(
-            message, ticket, operator_username
-        )
+        # Check if this is a web ticket
+        if ticket.source == TicketSource.WEB:
+            # For web tickets, send via WebSocket
+            success = await service.forward_operator_message_to_web_user(
+                message, ticket, operator_username
+            )
+        else:
+            # For Telegram tickets, forward via Telegram
+            success = await service.forward_operator_message_to_user(
+                message, ticket, operator_username
+            )
 
         if success:
             # React with checkmark to confirm delivery
